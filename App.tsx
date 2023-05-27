@@ -1,19 +1,35 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, Text, Image, Button } from 'react-native';
 import * as tf from '@tensorflow/tfjs';
 import { fetch, decodeJpeg } from '@tensorflow/tfjs-react-native';
 import * as mobilenet from '@tensorflow-models/mobilenet';
+import * as ImagePicker from 'expo-image-picker';
 
 const App = () => {
   const [isTfReady, setIsTfReady] = useState(false);
   const [result, setResult] = useState('');
-  const image = useRef(null);
+  const [imagePick, setImagePick] = useState("");
+
+  const pickImage = async () => {
+    // No permissions request is necessary for launching the image library
+    let resultImage = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0,
+    });
+
+    // console.log(resultImage);
+
+    if (!resultImage.canceled) {
+      setImagePick(resultImage.assets[0].uri);
+      console.log("canceled")
+    }
+  };
 
   const load = async () => {
     try {
       // Load mobilenet.
       await tf.ready();
-      const model = await mobilenet.load();
+      const model = await mobilenet.load().catch(error => console.log(error, "test"));
       setIsTfReady(true);
 
       // Start inference and show result.
@@ -23,11 +39,13 @@ const App = () => {
       const imageDataArrayBuffer = await response.arrayBuffer();
       const imageData = new Uint8Array(imageDataArrayBuffer);
       const imageTensor = decodeJpeg(imageData);
-      const prediction = await model.classify(imageTensor);
-      if (prediction && prediction.length > 0) {
-        setResult(
-          `${prediction[0].className} (${prediction[0].probability.toFixed(3)})`
-        );
+      if (model) {
+        const prediction = await model.classify(imageTensor);
+        if (prediction && prediction.length > 0) {
+          setResult(
+            `${prediction[0].className} (${prediction[0].probability.toFixed(3)})`
+          );
+        }
       }
     } catch (err) {
       console.log(err);
@@ -36,7 +54,8 @@ const App = () => {
 
   useEffect(() => {
     load();
-  }, []);
+    // console.log(imagePick)
+  }, [imagePick]);
 
   return (
     <View
@@ -48,11 +67,8 @@ const App = () => {
         justifyContent: 'center',
       }}
     >
-      <Image
-        ref={image}
-        source={require('./basketball.jpg')}
-        style={{ width: 200, height: 200 }}
-      />
+      <Button title="Pick an image from camera roll" onPress={pickImage} />
+      {imagePick && <Image source={{ uri: imagePick }} style={{ width: 200, height: 200 }} />}
       {!isTfReady && <Text>Loading TFJS model...</Text>}
       {isTfReady && result === '' && <Text>Classifying...</Text>}
       {result !== '' && <Text>{result}</Text>}
