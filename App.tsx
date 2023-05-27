@@ -15,14 +15,13 @@ const App = () => {
     // No permissions request is necessary for launching the image library
     let resultImage = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      quality: 0,
+      quality: 1,
     });
-
-    // console.log(resultImage);
 
     if (!resultImage.canceled) {
       setImagePick(resultImage.assets[0].uri);
-      console.log("canceled")
+      // console.log("canceled")
+      load();
     }
   };
 
@@ -37,14 +36,10 @@ const App = () => {
       // const image = require('./basketball.jpg');
       // const imageAssetPath = Image.resolveAssetSource(image);
       // const response = await fetch(imageAssetPath.uri, {}, { isBinary: true });
-      const response = await FileSystem.readAsStringAsync(imagePick);
+      const response = await FileSystem.readAsStringAsync(imagePick, { encoding: FileSystem.EncodingType.Base64 });
       // const imageDataArrayBuffer = await response.arrayBuffer();
-      const imageData = new Uint8Array(response.length);
-
-      for (let i = 0; i < response.length; i++) {
-        imageData[i] = response.charCodeAt(i);
-      }
-
+      const buffer = Buffer.from(response, 'base64');
+      const imageData = new Uint8Array(buffer);
       
       const imageTensor = decodeJpeg(imageData);
       if (model) {
@@ -59,10 +54,6 @@ const App = () => {
       console.log(err);
     }
   };
-
-  useEffect(() => {
-    load();
-  }, [imagePick]);
 
   return (
     <View
