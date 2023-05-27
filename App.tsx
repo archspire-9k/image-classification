@@ -10,6 +10,7 @@ const App = () => {
   const [isTfReady, setIsTfReady] = useState(false);
   const [result, setResult] = useState('');
   const [imagePick, setImagePick] = useState("");
+  const [error, setError] = useState();
 
   const pickImage = async () => {
     // No permissions request is necessary for launching the image library
@@ -51,7 +52,7 @@ const App = () => {
         }
       }
     } catch (err) {
-      console.log(err);
+      setError(err)
     }
   };
 
@@ -65,11 +66,12 @@ const App = () => {
         justifyContent: 'center',
       }}
     >
-      <Button title="Pick an image from camera roll" onPress={pickImage} />
+      <Button title="Pick an image from camera roll" disabled={!isTfReady} onPress={pickImage} />
       {imagePick && <Image source={{ uri: imagePick }} style={{ width: 200, height: 200 }} />}
       {!isTfReady && <Text>Loading TFJS model...</Text>}
       {isTfReady && result === '' && <Text>Classifying...</Text>}
       {result !== '' && <Text>{result}</Text>}
+      {error && <Text>{error}</Text>}
     </View>
   );
 };
