@@ -4,6 +4,7 @@ import * as tf from '@tensorflow/tfjs';
 import { fetch, decodeJpeg } from '@tensorflow/tfjs-react-native';
 import * as mobilenet from '@tensorflow-models/mobilenet';
 import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 
 const App = () => {
   const [isTfReady, setIsTfReady] = useState(false);
@@ -33,11 +34,18 @@ const App = () => {
       setIsTfReady(true);
 
       // Start inference and show result.
-      const image = require('./basketball.jpg');
-      const imageAssetPath = Image.resolveAssetSource(image);
-      const response = await fetch(imageAssetPath.uri, {}, { isBinary: true });
-      const imageDataArrayBuffer = await response.arrayBuffer();
-      const imageData = new Uint8Array(imageDataArrayBuffer);
+      // const image = require('./basketball.jpg');
+      // const imageAssetPath = Image.resolveAssetSource(image);
+      // const response = await fetch(imageAssetPath.uri, {}, { isBinary: true });
+      const response = await FileSystem.readAsStringAsync(imagePick);
+      // const imageDataArrayBuffer = await response.arrayBuffer();
+      const imageData = new Uint8Array(response.length);
+
+      for (let i = 0; i < response.length; i++) {
+        imageData[i] = response.charCodeAt(i);
+      }
+
+      
       const imageTensor = decodeJpeg(imageData);
       if (model) {
         const prediction = await model.classify(imageTensor);
@@ -54,7 +62,6 @@ const App = () => {
 
   useEffect(() => {
     load();
-    // console.log(imagePick)
   }, [imagePick]);
 
   return (
