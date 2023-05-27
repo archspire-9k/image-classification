@@ -3,17 +3,9 @@ import { View, Text, Image, Button } from 'react-native';
 import * as tf from '@tensorflow/tfjs';
 import { fetch, decodeJpeg } from '@tensorflow/tfjs-react-native';
 import * as mobilenet from '@tensorflow-models/mobilenet';
-import { MobileNet } from "@tensorflow-models/mobilenet"
+import {MobileNet} from "@tensorflow-models/mobilenet"
 import * as ImagePicker from 'expo-image-picker';
-import { decode, encode } from 'base-64';
-
-if (!global.btoa) {
-  global.btoa = encode;
-}
-
-if (!global.atob) {
-  global.atob = decode;
-}
+import * as FileSystem from 'expo-file-system';
 
 const App = () => {
   const [isTfReady, setIsTfReady] = useState(false);
@@ -27,7 +19,6 @@ const App = () => {
     // No permissions request is necessary for launching the image library
     let resultImage = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      base64: true,
       quality: 1,
     });
 
@@ -36,17 +27,10 @@ const App = () => {
     if (!resultImage.canceled) {
       setImagePick(resultImage.assets[0].uri);
       setError("");
-      // Convert the base64 encoded image data to a Uint8Array
-      const base64Data = resultImage.assets[0].base64;
-      const binaryString = atob(base64Data);
-      // Create a Uint8Array from the binary string
-      const uint8Array = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        uint8Array[i] = binaryString.charCodeAt(i);
-      }
-      await process(uint8Array);
+      // console.log("canceled")
+      await process(resultImage.assets[0].uri);
     }
-
+    
   };
 
   const load = async () => {
@@ -54,12 +38,11 @@ const App = () => {
       // Load mobilenet.
       await tf.ready();
       await mobilenet.load().catch(error => console.log(error, "test"))
-        .then(model => {
-          if (model) {
-            setModel(model);
-            setIsTfReady(true);
-          }
-        });
+      .then(model => {
+        if(model) {
+          setModel(model);
+          setIsTfReady(true);
+        }}); 
     }
     catch (err) {
       if (err) {
@@ -68,22 +51,21 @@ const App = () => {
     }
   }
 
-  const process = async (uri: Uint8Array) => {
+  const process = async (uri : string) => {
     try {
       // Start inference and show result.      
 
-      // const response = await FileSystem.readAsStringAsync(uri).catch(err => {
-      //   if (err) {
-      //     setError(err.toString() + " reading file prob");
-      //   }
-      // });
-      // // const imageDataArrayBuffer = await response.arrayBuffer();
-      // const buffer = Buffer.from(response, 'base64');
-      // console.log(buffer)
-      // const imageData = new Uint8Array(buffer);
-
-      const imageTensor = decodeJpeg(uri);
-
+      const response = await FileSystem.readAsStringAsync(uri, { encoding: FileSystem.EncodingType.Base64 }).catch(err =>{
+        if (err) {
+          setError(err.toString() + " reading file prob");
+        }
+      } );
+      // const imageDataArrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(response, 'base64');
+      const imageData = new Uint8Array(buffer);
+      
+      const imageTensor = decodeJpeg(imageData);
+      
       if (model) {
         const prediction = await model.classify(imageTensor);
         if (prediction && prediction.length > 0) {
@@ -96,7 +78,6 @@ const App = () => {
     } catch (err) {
       if (err) {
         setError(err.toString() + " processing problem");
-        setReady(true);
       }
     }
   }
@@ -116,7 +97,7 @@ const App = () => {
       }}
     >
       <Button title="Pick an image from camera roll" disabled={!isTfReady || !ready} onPress={pickImage} />
-      {imagePick && <Image source={{ uri: imagePick }} style={{ width: 400, height: 400 }} />}
+      {imagePick && <Image source={{ uri: imagePick }} style={{ width: 200, height: 200 }} />}
       {!isTfReady && <Text>Loading TFJS model...</Text>}
       {isTfReady && result === '' && <Text>Classifying...</Text>}
       {ready && <Text>{result}</Text>}
